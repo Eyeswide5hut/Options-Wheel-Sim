@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Wheel Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .chart-container img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <div class="container mx-auto p-6">
+        <h1 class="text-4xl font-bold text-center mb-8 text-gray-800">Options Wheel Simulation</h1>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Form Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-bold mb-4 text-gray-700">Simulation Parameters</h2>
+
+                {% if error %}
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    {{ error }}
+                </div>
+                {% endif %}
+
+                <form method="POST" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700">Initial Investment (£)</label>
+                        <input type="number" name="initial_investment" class="w-full p-2 border rounded" required
+                            step="0.01">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700">Target Profit per Contract (%)</label>
+                        <input type="number" name="interest_rate" class="w-full p-2 border rounded" required
+                            step="0.01">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700">Target Acceptable loss Per Contract (%)</label>
+                        <input type="number" name="loss_rate" class="w-full p-2 border rounded" required step="0.01">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700">Monthly Contributions (£)</label>
+                        <input type="number" name="monthly_contribution" class="w-full p-2 border rounded" required
+                            step="0.01">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700">Number of Years</label>
+                        <input type="number" name="years" class="w-full p-2 border rounded" required>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700">Probability of making money Per Contract (%)</label>
+                        <input type="number" name="win_probability" class="w-full p-2 border rounded" required
+                            step="0.01">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700">Number of Simulations To Run</label>
+                        <input type="number" name="num_simulations" class="w-full p-2 border rounded" required>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700">Option Trading Frequency</label>
+                        <select name="compounding_frequency" class="w-full p-2 border rounded" required>
+                            <option value="monthly">Monthly</option>
+                            <option value="weekly">Weekly</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700">Utilized Capital Per Week/Month (%)</label>
+                        <input type="number" name="utilized_capital" class="w-full p-2 border rounded" required step="0.01">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700">Salary (£)</label>
+                        <input type="number" name="salary" class="w-full p-2 border rounded" required step="0.01">
+                    </div>
+
+                    <div class="tax-brackets-container">
+                        <label class="block text-gray-700 mb-2">Tax Bands</label>
+                        <div id="tax-brackets">
+                            <div class="grid grid-cols-3 gap-2 mb-2 tax-bracket">
+                                <input type="number" name="tax_bracket_lower[]" placeholder="Lower Band (£)" class="p-2 border rounded"
+                                    required>
+                                <input type="number" name="tax_bracket_upper[]" placeholder="Upper Band (£)" class="p-2 border rounded"
+                                    required>
+                                <input type="number" name="tax_rate[]" placeholder="Tax Rate (%)" class="p-2 border rounded" required>
+                            </div>
+                        </div>
+                        <button type="button" id="add-tax-bracket" class="mt-2 bg-blue-500 text-white p-2 rounded hover:bg-blue-600">
+                            Add Another Tax Bracket
+                        </button>
+                    </div>
+                    
+                    <script>
+                        document.getElementById('add-tax-bracket').addEventListener('click', function () {
+                            const container = document.getElementById('tax-brackets');
+                            const newBracket = document.querySelector('.tax-bracket').cloneNode(true);
+
+                            // Clear previous values
+                            newBracket.querySelectorAll('input').forEach(input => input.value = '');
+
+                            container.appendChild(newBracket);
+                        });
+                    </script>
+
+                    <button type="submit"
+                        class="w-full bg-green-500 text-white p-3 rounded hover:bg-green-600 transition duration-300">
+                        Run Investment Simulation
+                    </button>
+                </form>
+            </div>
+
+            <!-- Results Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-bold mb-4 text-gray-700">Simulation Results</h2>
+
+                {% if pre_tax_final %}
+                <div class="space-y-4">
+                    <div class="bg-gray-100 p-4 rounded">
+                        <h3 class="font-semibold text-lg mb-2">Investment Statistics</h3>
+                        <p>Highest Value: {{ high_end }}</p>
+                        <p>Lowest Value: {{ low_end }}</p>
+                        <p>Average Value: {{ average }}</p>
+                        <p>Median Value: {{ median }}</p>
+                        <p>Total Invested: {{ total_invested }}</p>
+                        <p>S&P 500 Final Balance: {{ s_and_p_final }}</p>
+                    </div>
+
+                    <div class="bg-gray-100 p-4 rounded">
+                        <h3 class="font-semibold text-lg mb-2">Tax Impact</h3>
+                        <p>Pre-Tax Final Balance: {{ pre_tax_final }}</p>
+                        <p>Post-Tax Final Balance: {{ post_tax_final }}</p>
+                        <p>Total Tax Paid: {{ total_tax_paid }}</p>
+                    </div>
+
+                    <div class="chart-container">
+                        <h4 class="font-semibold text-lg mb-2">Distribution of Investment Results</h4>
+                        <img src="data:image/png;base64,{{ plot_data }}" alt="Investment Result Distribution">
+                    </div>
+
+                    <div class="chart-container">
+                        <h4 class="font-semibold text-lg mb-2">Portfolio Growth Over Time</h4>
+                        <img src="data:image/png;base64,{{ growth_chart_data }}" alt="Portfolio Growth Chart">
+                    </div>
+
+                    <div class="chart-container">
+                        <h4 class="font-semibold text-lg mb-2">Annual Return Distribution</h4>
+                        <img src="data:image/png;base64,{{ return_distribution_data }}"
+                            alt="Annual Return Distribution">
+                    </div>
+
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-center">Your simulation results will appear here after submission.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Local storage functionality for form persistence
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.querySelector('form');
+            const inputs = form.querySelectorAll('input, select');
+
+            // Load saved values
+            inputs.forEach(input => {
+                const savedValue = localStorage.getItem(input.name);
+                if (savedValue) {
+                    input.value = savedValue;
+                }
+            });
+
+            // Save values on input
+            inputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    localStorage.setItem(input.name, input.value);
+                });
+            });
+        });
+    </script>
+
+    <footer class="bg-white border-t border-gray-200 py-8 mt-10">
+        <div class="container mx-auto px-6">
+            <div class="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-12">
+                <!-- Buy Me a Coffee Section -->
+                <div class="text-center md:text-left">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Support This Project</h3>
+                    <a href="https://buymeacoffee.com/fluki"
+                        class="inline-flex items-center px-4 py-2 bg-yellow-400 text-gray-800 rounded-lg hover:bg-yellow-500 transition duration-300">
+                        <span class="mr-2">☕</span>
+                        Buy me a coffee
+                    </a>
+                </div>
+    
+                <!-- Divider for mobile -->
+                <div class="hidden md:block w-px h-12 bg-gray-200"></div>
+    
+                <!-- Social Links -->
+                <div class="text-center md:text-left">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Connect</h3>
+                    <a href="https://github.com/Eyeswide5hut" target="_blank"
+                        class="inline-flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition duration-300">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill-rule="evenodd"
+                                d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+</body>
+
+</html>
