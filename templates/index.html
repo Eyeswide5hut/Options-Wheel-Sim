@@ -175,27 +175,77 @@
     </div>
 
     <script>
-        // Local storage functionality for form persistence
-        document.addEventListener('DOMContentLoaded', () => {
-            const form = document.querySelector('form');
-            const inputs = form.querySelectorAll('input, select');
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.querySelector('form');
+        const inputs = form.querySelectorAll('input, select');
 
-            // Load saved values
-            inputs.forEach(input => {
-                const savedValue = localStorage.getItem(input.name);
-                if (savedValue) {
-                    input.value = savedValue;
-                }
-            });
+        // Load saved values for regular inputs
+        inputs.forEach(input => {
+            const savedValue = localStorage.getItem(input.name);
+            if (savedValue) {
+                input.value = savedValue;
+            }
+        });
 
-            // Save values on input
-            inputs.forEach(input => {
-                input.addEventListener('input', () => {
-                    localStorage.setItem(input.name, input.value);
-                });
+        // Save values on input change
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                localStorage.setItem(input.name, input.value);
             });
         });
-    </script>
+
+        // ✅ Handle Tax Brackets - Save and Load Dynamically Added Fields
+        const taxBracketContainer = document.getElementById('tax-brackets');
+
+        function saveTaxBrackets() {
+            let taxData = [];
+            document.querySelectorAll('.tax-bracket').forEach(row => {
+                const lower = row.querySelector('[name="tax_bracket_lower[]"]').value;
+                const upper = row.querySelector('[name="tax_bracket_upper[]"]').value;
+                const rate = row.querySelector('[name="tax_rate[]"]').value;
+                taxData.push({ lower, upper, rate });
+            });
+            localStorage.setItem('tax_brackets', JSON.stringify(taxData));
+        }
+
+        function loadTaxBrackets() {
+            const savedBrackets = JSON.parse(localStorage.getItem('tax_brackets') || '[]');
+            taxBracketContainer.innerHTML = ''; // Clear existing fields
+            
+            savedBrackets.forEach(({ lower, upper, rate }) => {
+                addTaxBracket(lower, upper, rate);
+            });
+        }
+
+        function addTaxBracket(lower = '', upper = '', rate = '') {
+            const newBracket = document.createElement('div');
+            newBracket.classList.add('grid', 'grid-cols-3', 'gap-2', 'mb-2', 'tax-bracket');
+
+            newBracket.innerHTML = `
+                <input type="number" name="tax_bracket_lower[]" placeholder="Lower Band (£)" class="p-2 border rounded" value="${lower}" required>
+                <input type="number" name="tax_bracket_upper[]" placeholder="Upper Band (£)" class="p-2 border rounded" value="${upper}" required>
+                <input type="number" name="tax_rate[]" placeholder="Tax Rate (%)" class="p-2 border rounded" value="${rate}" required>
+            `;
+
+            taxBracketContainer.appendChild(newBracket);
+
+            // Save tax brackets whenever values change
+            newBracket.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', saveTaxBrackets);
+            });
+        }
+
+        // Load tax brackets from localStorage on page load
+        loadTaxBrackets();
+
+        // Ensure "Add Another Tax Bracket" button works
+        document.getElementById('add-tax-bracket').addEventListener('click', () => {
+            addTaxBracket();
+            saveTaxBrackets();
+        });
+
+    });
+</script>
 
     <footer class="bg-white border-t border-gray-200 py-8 mt-10">
         <div class="container mx-auto px-6">
