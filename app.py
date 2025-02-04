@@ -12,41 +12,31 @@ app = Flask(__name__)
 # Function to calculate income tax based on salary and trading profits using tax bands
 def calculate_yearly_tax(salary, yearly_trading_results, tax_bands):
     """
-    Calculate tax based on salary and net trading results for a year.
+    Calculate tax based on salary and trading profits using progressive tax bands.
     
     Parameters:
-    - salary: Annual salary
-    - yearly_trading_results: List of trading results (profits/losses) for the year
-    - tax_bands: List of tuples (lower_bound, upper_bound, rate)
+    - salary: Fixed annual salary
+    - yearly_trading_results: List of trading profits/losses over the year
+    - tax_bands: List of tuples (lower_bound, upper_bound, tax_rate)
     
     Returns:
-    - total_tax: Tax amount for the year
+    - total_tax: Total tax owed for the year
     """
-    # Calculate net trading profit/loss for the year
     net_trading_result = sum(yearly_trading_results)
-    
-    # Only include trading results in taxable income if there's a net profit
-    taxable_income = salary
-    if net_trading_result > 0:
-        taxable_income += net_trading_result
-    
-    # Calculate tax using progressive bands
+    taxable_income = salary + max(0, net_trading_result)  # Only add positive trading profit
+
     total_tax = 0
     remaining_income = taxable_income
-    
+
     for lower_bound, upper_bound, rate in sorted(tax_bands):
         if remaining_income > lower_bound:
-            # Calculate taxable amount in this band
-            taxable_in_band = min(
-                remaining_income - lower_bound,
-                upper_bound - lower_bound
-            )
-            total_tax += taxable_in_band * rate
-            remaining_income -= taxable_in_band
+            taxable_amount = min(remaining_income, upper_bound) - lower_bound
+            total_tax += taxable_amount * rate
+            remaining_income -= taxable_amount  # Reduce only this bracket's taxable portion
             
             if remaining_income <= 0:
-                break
-    
+                break  # Stop once all income is taxed
+
     return total_tax
 
 def simulate_investment(initial_investment, interest_rate, loss_rate, monthly_contribution, 
