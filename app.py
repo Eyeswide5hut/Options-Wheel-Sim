@@ -1,13 +1,17 @@
+import os
+import tempfile
 import random
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')  # Prevent GUI warnings
+matplotlib.use('Agg')
+os.environ['MPLCONFIGDIR'] = tempfile.mkdtemp()
 from matplotlib import pyplot as plt
 import io
 import base64
 from flask import Flask, render_template, request
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key')
 
 # Function to calculate income tax based on salary and trading profits using tax bands
 def calculate_yearly_tax(salary, yearly_trading_results, tax_bands):
@@ -108,6 +112,7 @@ def simulate_investment(initial_investment, interest_rate, loss_rate, monthly_co
     avg_total_tax_paid = np.mean(total_tax_paid_list)
     
     return results, avg_yearly_balances, avg_post_tax_balances, pre_tax_final, post_tax_final, avg_total_tax_paid
+
 def calculate_s_and_p_500_growth(initial_investment, monthly_contribution, years, s_and_p_annual_return=0.10):
     months = years * 12
     monthly_growth_rate = (1 + s_and_p_annual_return) ** (1 / 12) - 1  
@@ -131,7 +136,7 @@ def generate_plot(results, total_invested):
     plt.legend()
     
     buf = io.BytesIO()
-    plt.savefig(buf, format='png')
+    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
     buf.seek(0)
     plt.close()
     
@@ -148,7 +153,7 @@ def generate_growth_chart(yearly_balances, post_tax_balances, s_and_p_balances):
     plt.legend()
 
     buf = io.BytesIO()
-    plt.savefig(buf, format='png')
+    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
     buf.seek(0)
     plt.close()
 
@@ -163,7 +168,7 @@ def generate_return_distribution(results, years):
     plt.title("Annual Return Distribution Across Simulations")
 
     buf = io.BytesIO()
-    plt.savefig(buf, format='png')
+    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
     buf.seek(0)
     plt.close()
 
@@ -181,7 +186,7 @@ def generate_tax_comparison_chart(pre_tax_final, post_tax_final, total_tax_paid)
     plt.title("Tax Impact on Final Balance")
 
     buf = io.BytesIO()
-    plt.savefig(buf, format='png')
+    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
     buf.seek(0)
     plt.close()
 
@@ -198,7 +203,7 @@ def generate_cdf_chart(results):
     plt.title("CDF of Final Portfolio Value")
 
     buf = io.BytesIO()
-    plt.savefig(buf, format='png')
+    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
     buf.seek(0)
     plt.close()
 
@@ -268,4 +273,5 @@ def home():
     return render_template('index.html')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
